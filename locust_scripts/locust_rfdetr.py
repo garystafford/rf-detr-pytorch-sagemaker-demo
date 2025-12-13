@@ -11,7 +11,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-IMG_SIZE = 640  # max image dimension for inference
+IMG_SIZE = 56*10  # max image dimension for inference
 
 region = "us-east-1"
 endpoint_name = "<YOUR_SAGEMAKER_ENDPOINT_NAME>"  # replace with your endpoint name
@@ -21,7 +21,7 @@ class BotoClient:
     def __init__(self):
         self.sagemaker_client = boto3.client("sagemaker-runtime", region_name=region)
 
-    def resize_long_side(self, image: Image.Image, max_size: int = 640) -> Image.Image:
+    def resize_long_side(self, image: Image.Image, max_size: int = 560) -> Image.Image:
         w, h = image.size
         long_side = max(w, h)
         if long_side <= max_size:
