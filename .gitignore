@@ -248,3 +248,4 @@ $RECYCLE.BIN/
 *.pt
 *.pth
 *.tar.gz
+**/*.csv
