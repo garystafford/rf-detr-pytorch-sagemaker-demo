@@ -1,0 +1,3 @@
+sagemaker>=2
+inference
+rfdetr

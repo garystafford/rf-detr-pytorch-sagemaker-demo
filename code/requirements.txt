@@ -1,0 +1,2 @@
+inference>=0.62.5
+rfdetr>=1.3.0
