@@ -1,0 +1,11 @@
+| Instance       | Users | Latency (ms) | RPS  | GPU % |
+| -------------- | ----- | ------------ | ---- | ----- |
+| ml.g6.xlarge   | 1     |   98         | 10.0 | 26%   |
+| ml.g5.xlarge   | 1     |  110         |  9.4 | 28%   |
+| ml.g4dn.xlarge | 1     |  180         |  5.3 | 59%   |
+
+| Instance       | Users | Latency (ms) | RPS  | GPU % |
+| -------------- | ----- | ------------ | ---- | ----- |
+| ml.g6.xlarge   | 25    |  940         | 26.5 | 82%   |
+| ml.g5.xlarge   | 25    | 1000         | 25.4 | 71%   |
+| ml.g4dn.xlarge | 25    | 3000         |  8.3 | 92%   |
