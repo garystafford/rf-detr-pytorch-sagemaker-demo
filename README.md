@@ -2,9 +2,9 @@
 
 Learn how to deploy and performance test the state-of-the-art RF-DETR object detection model to Amazon SageMaker AI using PyTorch for production-ready, real-time inference with GPU acceleration.
 
-![Sample Output](./previews/sample_images_01_detected.jpg)
+![Sample Output](./previews/sample_01.png)
 
-![Sample Output](./previews/sample_images_04_detected.jpg)
+![Sample Output](./previews/sample_02.png)
 
 ## Features
 

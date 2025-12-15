@@ -21,9 +21,8 @@ rps_data = {
 
 # Create subplots
 fig = make_subplots(
-    rows=1, cols=2,
+    rows=2, cols=1,
     subplot_titles=('<b>Latency vs Users</b>', '<b>RPS vs Users</b>'),
-    horizontal_spacing=0.15,
     vertical_spacing=0.15
 )
 
@@ -65,7 +64,7 @@ for instance in instances:
             mode='lines+markers',
             line=dict(color=colors[instance], width=2.5),
             marker=dict(
-                size=9, 
+                size=9,
                 symbol='circle',
                 color=colors[instance],
                 line=dict(width=0)
@@ -73,13 +72,13 @@ for instance in instances:
             legendgroup=instance,
             showlegend=False
         ),
-        row=1, col=2
+        row=2, col=1
     )
 
 # Update layout
 fig.update_layout(
-    height=550,
-    width=1400,
+    height=1000,
+    width=900,
     showlegend=True,
     legend=dict(
         orientation="h",
@@ -93,7 +92,7 @@ fig.update_layout(
     plot_bgcolor='white',
     paper_bgcolor='white',
     font=dict(family="Arial, sans-serif", size=13, color='#555'),
-    margin=dict(t=140, b=70, l=80, r=50)
+    margin=dict(t=160, b=70, l=80, r=50)
 )
 
 # Update x-axes
@@ -135,14 +134,14 @@ fig.update_yaxes(
     showline=True,
     linewidth=1,
     linecolor='#333',
-    row=1, col=2
+    row=2, col=1
 )
 
 # Add title annotation
 fig.add_annotation(
     text="<b>Latency Increases with User Load Across ML Instances</b><br><span style='font-size:12px;color:#777'>ml.g4dn shows steeper performance degradation at scale</span>",
     xref="paper", yref="paper",
-    x=0.5, y=1.20,
+    x=0.5, y=1.14,
     showarrow=False,
     font=dict(size=17, color='#333'),
     xanchor='center',
@@ -161,9 +160,9 @@ fig.show()
 
 # Save as PNG (best for Medium - high quality, widely supported)
 fig.write_image(
-    "sagemaker_performance_comparison.png", 
-    width=1400, 
-    height=550, 
+    "sagemaker_performance_comparison.png",
+    width=900,
+    height=1000,
     scale=2  # 2x resolution for retina displays
 )
 
