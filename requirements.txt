@@ -1,3 +1,6 @@
 sagemaker>=2
 inference
 rfdetr
+pillow
+supervision
+numpy

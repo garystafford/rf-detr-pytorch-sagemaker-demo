@@ -1,3 +1,7 @@
+# Demonstrates different visualization options using RF-DETR Seg Preview model and Supervision library
+# Author: Gary Stafford
+# Date: December 2025
+
 from PIL import Image
 import supervision as sv
 from rfdetr import RFDETRSegPreview
@@ -41,7 +45,7 @@ box_annotator = sv.BoxAnnotator(
     thickness=2,
 )
 label_annotator = sv.LabelAnnotator(
-    text_color=sv.Color.WHITE,    # label text color
+    text_color=sv.Color.WHITE,  # label text color
     color=sv.Color.from_hex("#01AF01"),  # label background box color / palette
     text_scale=0.9,  # or label_scale / font_size depending on version
     text_padding=10,
