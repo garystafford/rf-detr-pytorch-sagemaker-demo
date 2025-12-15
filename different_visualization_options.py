@@ -12,7 +12,7 @@ model = RFDETRSegPreview(pretrain_weights="rf-detr-seg-preview.pt")
 
 # 2. Load image (RGB)
 image = Image.open(
-    "/Users/garystafford/Downloads/Gemini_Generated_Image_xe9gq2xe9gq2xe9g.png"
+    "<YOUR_IMAGE_PATH_HERE>"
 ).convert("RGB")
 
 default_palette = sv.ColorPalette.DEFAULT  # default supervision colors
@@ -35,16 +35,16 @@ labels = [
 
 # Annotators
 mask_annotator = sv.MaskAnnotator(
-    # color=sv.Color.from_hex("#00FF00"),  # mask color / palette
+    # color=sv.Color.from_hex("#01AF01"),  # mask color / palette
     opacity=0.4,  # mask transparency
 )
 box_annotator = sv.BoxAnnotator(
-    # color=sv.Color.from_hex("#00FF00"),  # box color / palette
+    # color=sv.Color.from_hex("#01AF01"),  # box color / palette
     thickness=2,
 )
 label_annotator = sv.LabelAnnotator(
-    # text_color=sv.Color.BLACK,    # label text color
-    # color=sv.Color.from_hex("#00FF00"),  # label background box color / palette
+    # text_color=sv.Color.WHITE,    # label text color
+    # color=sv.Color.from_hex("#01AF01"),  # label background box color / palette
     text_scale=0.9,  # or label_scale / font_size depending on version
     text_padding=10,
     text_thickness=2,
@@ -104,20 +104,15 @@ for i, mask in enumerate(masks):
         outlined = sv.draw_polygon(
             scene=outlined,
             polygon=polygon,
-            color=sv.Color.from_hex("#00FF00"),  # color,  # outline color
+            color=color, #sv.Color.from_hex("#01AF01"),  # outline color
             thickness=2,  # outline thickness
         )
 
-
 # 5. Save or display the overlaid result
 outlined_image = Image.fromarray(outlined)
-
-mask_annotator_2 = sv.MaskAnnotator(
-    # color=sv.Color.from_hex("#00FF00"),  # mask color / palette
-    opacity=0.2,  # mask transparency
-    # color=roboflow_palette,
+annotated_05 = label_annotator.annotate(
+    scene=outlined_image,
+    detections=detections,
+    labels=labels,  # overrides default labeling
 )
-
-# outlined_image = mask_annotator_2.annotate(outlined_image, detections)
-
-outlined_image.save("masks_rfdetr_seg_preview_05.jpg")
+annotated_05.save("masks_rfdetr_seg_preview_05.jpg")
