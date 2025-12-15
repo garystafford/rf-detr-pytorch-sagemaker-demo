@@ -11,9 +11,7 @@ model = RFDETRSegPreview(pretrain_weights="rf-detr-seg-preview.pt")
 # model.optimize_for_inference()
 
 # 2. Load image (RGB)
-image = Image.open(
-    "<YOUR_IMAGE_PATH_HERE>"
-).convert("RGB")
+image = Image.open("<YOUR_IMAGE_PATH_HERE>").convert("RGB")
 
 default_palette = sv.ColorPalette.DEFAULT  # default supervision colors
 roboflow_palette = sv.ColorPalette.ROBOFLOW  # Roboflow brand-ish colors
@@ -43,8 +41,8 @@ box_annotator = sv.BoxAnnotator(
     thickness=2,
 )
 label_annotator = sv.LabelAnnotator(
-    # text_color=sv.Color.WHITE,    # label text color
-    # color=sv.Color.from_hex("#01AF01"),  # label background box color / palette
+    text_color=sv.Color.WHITE,    # label text color
+    color=sv.Color.from_hex("#01AF01"),  # label background box color / palette
     text_scale=0.9,  # or label_scale / font_size depending on version
     text_padding=10,
     text_thickness=2,
@@ -62,7 +60,7 @@ annotated_01.save("masks_rfdetr_seg_preview_01.jpg")
 
 # just boxes and masks
 annotated_02 = image.copy()
-# annotated_02 = mask_annotator.annotate(annotated_02, detections)
+annotated_02 = mask_annotator.annotate(annotated_02, detections)
 annotated_02 = box_annotator.annotate(annotated_02, detections=detections)
 annotated_02.save("masks_rfdetr_seg_preview_02.jpg")
 
@@ -73,7 +71,7 @@ annotated_03 = label_annotator.annotate(
     detections=detections,
     labels=labels,  # overrides default labeling
 )
-annotated_03 = box_annotator.annotate(annotated_03, detections=detections)
+# annotated_03 = box_annotator.annotate(annotated_03, detections=detections)
 annotated_03.save("masks_rfdetr_seg_preview_03.jpg")
 
 # masks, labels
@@ -104,7 +102,7 @@ for i, mask in enumerate(masks):
         outlined = sv.draw_polygon(
             scene=outlined,
             polygon=polygon,
-            color=color, #sv.Color.from_hex("#01AF01"),  # outline color
+            color=color,  # sv.Color.from_hex("#01AF01"),  # outline color
             thickness=2,  # outline thickness
         )
 
