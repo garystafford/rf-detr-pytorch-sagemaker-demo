@@ -9,9 +9,9 @@ from rfdetr import RFDETRBase  # or RFDETRNano/Small/Medium/Large
 from rfdetr.util.coco_classes import COCO_CLASSES
 
 # ========= CONFIG =========
-SOURCE_VIDEO_PATH = "local_visualizations/sample_video.mp4"  # <-- set your input video
+SOURCE_VIDEO_PATH = "local_inference/sample_video.mp4"  # <-- set your input video
 TARGET_VIDEO_PATH = (
-    "local_visualizations/sample_video_annotated.mp4"  # <-- set your output video
+    "local_inference/sample_video_annotated.mp4"  # <-- set your output video
 )
 THRESHOLD = 0.25  # confidence threshold for displaying boxes
 # ==========================

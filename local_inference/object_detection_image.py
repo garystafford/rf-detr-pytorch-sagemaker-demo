@@ -13,10 +13,10 @@ import numpy as np
 model = RFDETRSegPreview(pretrain_weights="rf-detr-seg-preview.pt")
 
 # Optionally optimize for latency
-# model.optimize_for_inference()
+model.optimize_for_inference(compile=False)
 
 # 2. Load image (RGB)
-image = Image.open("local_visualizations/sample_image.png").convert("RGB")
+image = Image.open("local_inference/sample_image.png").convert("RGB")
 
 default_palette = sv.ColorPalette.DEFAULT  # default supervision colors
 roboflow_palette = sv.ColorPalette.ROBOFLOW  # Roboflow brand-ish colors
@@ -71,12 +71,12 @@ annotated_02.save("sample_image_annotated_02.jpg")
 
 # boxes, labels
 annotated_03 = image.copy()
+annotated_03 = box_annotator.annotate(annotated_03, detections=detections)
 annotated_03 = label_annotator.annotate(
     scene=annotated_03,
     detections=detections,
     labels=labels,  # overrides default labeling
 )
-annotated_03 = box_annotator.annotate(annotated_03, detections=detections)
 annotated_03.save("sample_image_annotated_03.jpg")
 
 # masks, labels
