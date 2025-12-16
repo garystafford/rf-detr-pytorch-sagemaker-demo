@@ -4,7 +4,6 @@
 # Date: December 2025
 
 import os
-import cv2
 import supervision as sv
 from rfdetr import RFDETRBase  # or RFDETRNano/Small/Medium/Large
 from rfdetr.util.coco_classes import COCO_CLASSES
@@ -19,22 +18,18 @@ THRESHOLD = 0.25  # confidence threshold for displaying boxes
 
 assert os.path.exists(SOURCE_VIDEO_PATH), f"Source video not found: {SOURCE_VIDEO_PATH}"
 
-# Optional: sanity-check that OpenCV can read the first frame
-cap = cv2.VideoCapture(SOURCE_VIDEO_PATH)
-ret, test_frame = cap.read()
-cap.release()
-if not ret:
-    raise RuntimeError(f"Could not read first frame from {SOURCE_VIDEO_PATH}")
-print("First frame shape:", test_frame.shape)
-
 print("Loading RF-DETR model...")
 model = RFDETRBase()  # change to RFDETRNano/Small/Medium/Large if desired
 print("Optimizing model for inference...")
 model.optimize_for_inference(compile=False)
 print("Model loaded and optimized.")
 
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
+box_annotator = sv.BoxAnnotator(
+    thickness=2,
+)
+label_annotator = sv.LabelAnnotator(
+    smart_position=True,  # <– try to avoid overlapping labels
+)
 
 
 def callback(frame, index: int):

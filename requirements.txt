@@ -1,6 +1,5 @@
 inference
 numpy
-opencv-python
 pillow
 rfdetr
 sagemaker>=2
