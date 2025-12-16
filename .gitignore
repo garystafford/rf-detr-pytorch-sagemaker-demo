@@ -251,6 +251,4 @@ $RECYCLE.BIN/
 **/*.csv
 .claude
 
-local_inference/*.mp4
-local_inference/*.png
-local_inference/*.jpg
+local_inference/*_annotated.*
