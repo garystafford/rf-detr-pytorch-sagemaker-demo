@@ -1,4 +1,5 @@
-# Demonstrates different visualization options using RF-DETR Seg Preview model and Supervision library
+# Demonstrates different image detection and segmentation options
+# using RFDETRSegPreview model and Supervision library
 # Author: Gary Stafford
 # Date: December 2025
 
@@ -15,7 +16,7 @@ model = RFDETRSegPreview(pretrain_weights="rf-detr-seg-preview.pt")
 # model.optimize_for_inference()
 
 # 2. Load image (RGB)
-image = Image.open("<YOUR_IMAGE_PATH_HERE>").convert("RGB")
+image = Image.open("local_visualizations/sample_image.png").convert("RGB")
 
 default_palette = sv.ColorPalette.DEFAULT  # default supervision colors
 roboflow_palette = sv.ColorPalette.ROBOFLOW  # Roboflow brand-ish colors
@@ -45,8 +46,8 @@ box_annotator = sv.BoxAnnotator(
     thickness=2,
 )
 label_annotator = sv.LabelAnnotator(
-    text_color=sv.Color.WHITE,  # label text color
-    color=sv.Color.from_hex("#01AF01"),  # label background box color / palette
+    # text_color=sv.Color.WHITE,  # label text color
+    # color=sv.Color.from_hex("#01AF01"),  # label background box color / palette
     text_scale=0.9,  # or label_scale / font_size depending on version
     text_padding=10,
     text_thickness=2,
@@ -55,18 +56,18 @@ label_annotator = sv.LabelAnnotator(
 
 # just image
 annotated_00 = image.copy()
-annotated_00.save("masks_rfdetr_seg_preview_00.jpg")
+annotated_00.save("sample_image_annotated_00.jpg")
 
 # just masks
 annotated_01 = image.copy()
 annotated_01 = mask_annotator.annotate(annotated_01, detections)
-annotated_01.save("masks_rfdetr_seg_preview_01.jpg")
+annotated_01.save("sample_image_annotated_01.jpg")
 
 # just boxes and masks
 annotated_02 = image.copy()
 annotated_02 = mask_annotator.annotate(annotated_02, detections)
 annotated_02 = box_annotator.annotate(annotated_02, detections=detections)
-annotated_02.save("masks_rfdetr_seg_preview_02.jpg")
+annotated_02.save("sample_image_annotated_02.jpg")
 
 # boxes, labels
 annotated_03 = image.copy()
@@ -75,8 +76,8 @@ annotated_03 = label_annotator.annotate(
     detections=detections,
     labels=labels,  # overrides default labeling
 )
-# annotated_03 = box_annotator.annotate(annotated_03, detections=detections)
-annotated_03.save("masks_rfdetr_seg_preview_03.jpg")
+annotated_03 = box_annotator.annotate(annotated_03, detections=detections)
+annotated_03.save("sample_image_annotated_03.jpg")
 
 # masks, labels
 annotated_04 = image.copy()
@@ -86,7 +87,7 @@ annotated_04 = label_annotator.annotate(
     detections=detections,
     labels=labels,  # overrides default labeling
 )
-annotated_04.save("masks_rfdetr_seg_preview_04.jpg")
+annotated_04.save("sample_image_annotated_04.jpg")
 
 
 # detections.mask: (N, H, W) boolean / 0‑1 masks for each instance
@@ -117,4 +118,4 @@ annotated_05 = label_annotator.annotate(
     detections=detections,
     labels=labels,  # overrides default labeling
 )
-annotated_05.save("masks_rfdetr_seg_preview_05.jpg")
+annotated_05.save("sample_image_annotated_05.jpg")

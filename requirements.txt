@@ -1,6 +1,7 @@
-sagemaker>=2
 inference
-rfdetr
-pillow
-supervision
 numpy
+opencv-python
+pillow
+rfdetr
+sagemaker>=2
+supervision
