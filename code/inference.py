@@ -30,8 +30,20 @@ MODEL_CLASSES = {
     "rfdetr-large": RFDETRLarge,
 }
 
+VARIANTS = {
+    "nano": {"file": "rf-detr-nano.pth", "type": "rfdetr-nano", "resolution": "384"},
+    "small": {"file": "rf-detr-small.pth", "type": "rfdetr-small", "resolution": "512"},
+    "medium": {
+        "file": "rf-detr-medium.pth",
+        "type": "rfdetr-medium",
+        "resolution": "576",
+    },
+    "base": {"file": "rf-detr-base.pth", "type": "rfdetr-base", "resolution": "560"},
+    "large": {"file": "rf-detr-large.pth", "type": "rfdetr-large", "resolution": "560"},
+}
 
-def model_fn(model_dir: str):
+
+def model_fn(model_dir: str) -> Any:
     """Load and prepare RF-DETR model for inference.
 
     Args:
@@ -42,53 +54,56 @@ def model_fn(model_dir: str):
     """
     logger.info("Loading RF-DETR model from %s", model_dir)
 
-    # Get configuration from environment variables
-    model_name = os.getenv("RFDETR_MODEL", "rf-detr-large.pth")
-    checkpoint_path = os.path.join(model_dir, model_name)
-    model_type = os.getenv("RFDETR_MODEL_TYPE", "rfdetr-large")
-    resolution = os.getenv("RFDETR_RESOLUTION", "560")
+    # Resolve variant from single env knob
+    variant = os.getenv("RFDETR_VARIANT", "large")
+    if variant not in VARIANTS:
+        raise ValueError(
+            f"Invalid RFDETR_VARIANT: {variant}. Must be one of {list(VARIANTS.keys())}"
+        )
 
+    cfg = VARIANTS[variant]
+    model_name = cfg["file"]
+    model_type = cfg["type"]
+    resolution = cfg["resolution"]
+
+    logger.info(
+        "Using variant=%s (file=%s, type=%s, resolution=%s)",
+        variant,
+        model_name,
+        model_type,
+        resolution,
+    )
+
+    checkpoint_path = os.path.join(model_dir, model_name)
     if not os.path.exists(checkpoint_path):
         raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
 
-    # Validate model_type
-    if model_type not in MODEL_CLASSES:
-        raise ValueError(
-            f"Invalid model_type: {model_type}. Must be one of {list(MODEL_CLASSES.keys())}"
-        )
-
-    # Determine device
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("Using device: %s", device)
 
     try:
-        # Load RF-DETR model
         model_class = MODEL_CLASSES[model_type]
-        model_kwargs = {
-            "pretrain_weights": checkpoint_path,
-            "device": device,
-            "resolution": int(resolution),
-        }
-
-        model = model_class(**model_kwargs)
-
+        model = model_class(
+            pretrain_weights=checkpoint_path, device=device, resolution=int(resolution)
+        )
     except Exception as e:
         logger.error("Failed to load RF-DETR model: %s", e)
         raise RuntimeError(f"Model loading failed: {e}") from e
 
-    # Apply optimization (enabled by default for production)
-    if os.getenv("RFDETR_OPTIMIZE", "true").lower() == "true":
+    # Apply optimization (enabled by default)
+    optimize_enabled = os.getenv("RFDETR_OPTIMIZE", "true").lower() == "true"
+    if optimize_enabled:
         compile_flag = os.getenv("RFDETR_COMPILE", "true").lower() == "true"
         logger.info("Optimizing model for inference (compile=%s)", compile_flag)
         try:
             model.optimize_for_inference(
                 compile=compile_flag, batch_size=1, dtype=torch.float32
             )
-            logger.info("Model optimization completed successfully")
+            logger.info("Model optimization completed")
         except Exception as e:
             logger.warning("Could not optimize model: %s", e)
 
-    # Store configuration on model object
+    # Store confidence threshold on model object
     try:
         model.conf_threshold = float(
             os.getenv("RFDETR_CONF", str(DEFAULT_CONF_THRESHOLD))
@@ -100,13 +115,70 @@ def model_fn(model_dir: str):
         model.conf_threshold = DEFAULT_CONF_THRESHOLD
 
     logger.info(
-        "Model loaded successfully with confidence threshold: %.2f",
+        "Model loaded (type=%s, resolution=%s, conf=%.2f)",
+        model_type,
+        resolution,
         model.conf_threshold,
     )
-    logger.info("Model type: %s", model_type)
-    logger.info("Model resolution: %s", resolution)
 
     return model
+
+
+def _extract_json_params(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract and validate optional parameters from JSON request."""
+    params: Dict[str, Any] = {
+        "confidence": None,
+        "classes": None,
+        "max_detections": None,
+        "min_box_area": None,
+    }
+
+    # Extract confidence threshold
+    if "confidence" in request_data:
+        confidence = float(request_data["confidence"])
+        if not (0.0 <= confidence <= 1.0):
+            raise ValueError(
+                f"Confidence must be between 0.0 and 1.0, got {confidence}"
+            )
+        params["confidence"] = confidence
+        logger.info("Using request confidence threshold: %.3f", confidence)
+
+    # Extract class filter
+    if "classes" in request_data:
+        classes = request_data["classes"]
+        if classes is not None:
+            if not isinstance(classes, list):
+                raise ValueError(
+                    f"'classes' must be a list or null, got {type(classes).__name__}"
+                )
+            if not all(isinstance(c, str) for c in classes):
+                raise ValueError("All elements in 'classes' must be strings")
+            params["classes"] = classes
+            logger.info("Filtering to classes: %s", classes)
+        else:
+            logger.info("classes=null: returning all classes (no filtering)")
+
+    # Extract max detections limit
+    if "max_detections" in request_data:
+        max_det = request_data["max_detections"]
+        if max_det is not None:
+            max_det = int(max_det)
+            if max_det <= 0:
+                raise ValueError(f"'max_detections' must be positive, got {max_det}")
+            params["max_detections"] = max_det
+            logger.info("Limiting to top %d detections", max_det)
+
+    # Extract minimum box area
+    if "min_box_area" in request_data:
+        min_area = request_data["min_box_area"]
+        if min_area is not None:
+            min_area = float(min_area)
+            if min_area < 0:
+                raise ValueError(f"'min_box_area' must be non-negative, got {min_area}")
+            params["min_box_area"] = min_area
+            logger.info("Filtering detections with box area >= %.1f px²", min_area)
+
+    return params
 
 
 def input_fn(
@@ -131,114 +203,54 @@ def input_fn(
             f"Supported types: {SUPPORTED_CONTENT_TYPES}"
         )
 
-    # Initialize parameters dictionary
-    params = {
-        "confidence": None,
-        "classes": None,  # None means all classes (no filtering)
-        "max_detections": None,  # None means no limit
-        "min_box_area": None,  # None means no minimum
-    }
-
     # Handle JSON request format
     if request_content_type == "application/json":
         try:
             request_data = json.loads(request_body)
-
-            # Extract base64-encoded image
             if "image" not in request_data:
                 raise ValueError(
                     "JSON request must contain 'image' field with base64-encoded image"
                 )
-
             image_data = base64.b64decode(request_data["image"])
-
-            # Extract optional confidence threshold
-            if "confidence" in request_data:
-                confidence = float(request_data["confidence"])
-                if not (0.0 <= confidence <= 1.0):
-                    raise ValueError(
-                        f"Confidence must be between 0.0 and 1.0, got {confidence}"
-                    )
-                params["confidence"] = confidence
-                logger.info("Using request confidence threshold: %.3f", confidence)
-
-            # Extract optional class filter (list of class names or None for all)
-            if "classes" in request_data:
-                classes = request_data["classes"]
-                if classes is not None:
-                    if not isinstance(classes, list):
-                        raise ValueError(
-                            f"'classes' must be a list or null, got {type(classes).__name__}"
-                        )
-                    if not all(isinstance(c, str) for c in classes):
-                        raise ValueError("All elements in 'classes' must be strings")
-                    params["classes"] = classes
-                    logger.info("Filtering to classes: %s", classes)
-                else:
-                    logger.info("classes=null: returning all classes (no filtering)")
-
-            # Extract optional max detections
-            if "max_detections" in request_data:
-                max_det = request_data["max_detections"]
-                if max_det is not None:
-                    max_det = int(max_det)
-                    if max_det <= 0:
-                        raise ValueError(
-                            f"'max_detections' must be positive, got {max_det}"
-                        )
-                    params["max_detections"] = max_det
-                    logger.info("Limiting to top %d detections", max_det)
-
-            # Extract optional minimum box area
-            if "min_box_area" in request_data:
-                min_area = request_data["min_box_area"]
-                if min_area is not None:
-                    min_area = float(min_area)
-                    if min_area < 0:
-                        raise ValueError(
-                            f"'min_box_area' must be non-negative, got {min_area}"
-                        )
-                    params["min_box_area"] = min_area
-                    logger.info(
-                        "Filtering detections with box area >= %.1f px²", min_area
-                    )
-
+            params = _extract_json_params(request_data)
             request_body = image_data
-
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON format: {e}")
+            raise ValueError(f"Invalid JSON format: {e}") from e
         except (KeyError, ValueError) as e:
-            raise ValueError(f"Invalid JSON request structure: {e}")
+            raise ValueError(f"Invalid JSON request structure: {e}") from e
+    else:
+        # No parameters for raw image requests
+        params = {
+            "confidence": None,
+            "classes": None,
+            "max_detections": None,
+            "min_box_area": None,
+        }
 
-    # Decode image bytes using Pillow
+    # Decode and validate image
     try:
         img = Image.open(BytesIO(request_body))
-
-        # Validate image dimensions
         width, height = img.size
-        if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+
+        if max(width, height) > MAX_IMAGE_DIMENSION:
             raise ValueError(
-                f"Image dimensions ({width}x{height}) exceed maximum allowed "
+                f"Image dimensions ({width}x{height}) exceed maximum "
                 f"({MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION})"
             )
 
         logger.info("Decoded image: %dx%d, mode=%s", width, height, img.mode)
 
-        # Convert to RGB if necessary (handles RGBA, grayscale, etc.)
         if img.mode != "RGB":
             logger.debug("Converting image from %s to RGB", img.mode)
             img = img.convert("RGB")
 
-        # Convert PIL Image to numpy array (RGB format)
-        img_array = np.array(img)
-
-        return img_array, params
+        return np.array(img), params
 
     except Image.UnidentifiedImageError as e:
-        raise ValueError(f"Invalid image format or corrupted image data: {e}")
+        raise ValueError(f"Invalid image format or corrupted image data: {e}") from e
     except Exception as e:
         logger.error("Image decoding failed: %s", e)
-        raise ValueError(f"Failed to decode image: {e}")
+        raise ValueError(f"Failed to decode image: {e}") from e
 
 
 def predict_fn(
@@ -253,30 +265,27 @@ def predict_fn(
     Returns:
         Tuple of (list of supervision Detections objects, request parameters dict)
     """
-    # Unpack input data
     img_array, params = input_data
 
     # Use request confidence if provided, otherwise fall back to model's default
-    request_confidence = params.get("confidence")
+    request_conf = params.get("confidence")
     conf_threshold = (
-        request_confidence
-        if request_confidence is not None
+        request_conf
+        if request_conf is not None
         else getattr(model, "conf_threshold", DEFAULT_CONF_THRESHOLD)
     )
+    conf_source = "from request" if request_conf is not None else "default"
 
     logger.info(
-        "Running RF-DETR inference on image shape=%s, conf_threshold=%.3f%s",
+        "Running inference on image shape=%s, conf=%.3f (%s)",
         img_array.shape,
         conf_threshold,
-        " (from request)" if request_confidence is not None else " (default)",
+        conf_source,
     )
 
     start = time.perf_counter()
     try:
-        # RF-DETR predict method handles preprocessing internally
-        # Input should be RGB numpy array in range [0, 255]
         detections = model.predict(img_array, threshold=conf_threshold)
-
     except Exception as e:
         logger.error("RF-DETR inference failed: %s", e)
         raise RuntimeError(f"Model inference failed: {e}") from e
@@ -284,24 +293,34 @@ def predict_fn(
     elapsed = (time.perf_counter() - start) * 1000
 
     # Ensure detections is a list
-    if not isinstance(detections, list):
-        detections = [detections]
+    detections = detections if isinstance(detections, list) else [detections]
 
-    # Count detections
+    # Count and log detections
     total_detections = sum(len(d.xyxy) if hasattr(d, "xyxy") else 0 for d in detections)
     logger.info(
         "Inference completed in %.2f ms, detected %d objects", elapsed, total_detections
     )
 
-    # Store inference time and metadata on detections for output_fn
+    # Store metadata for output_fn
     for detection in detections:
         detection.inference_time_ms = elapsed
-
-    # Add the actual confidence threshold used to params for metadata
     params["confidence_used"] = conf_threshold
 
-    # Return detections along with params for post-processing in output_fn
     return detections, params
+
+
+def _should_filter_detection(
+    label: str,
+    box_area: float,
+    filter_classes_lower: Optional[List[str]],
+    min_box_area: Optional[float],
+) -> bool:
+    """Check if a detection should be filtered out based on class or area."""
+    if filter_classes_lower is not None and label.lower() not in filter_classes_lower:
+        return True
+    if min_box_area is not None and box_area < min_box_area:
+        return True
+    return False
 
 
 def output_fn(
@@ -316,77 +335,59 @@ def output_fn(
     Returns:
         JSON string with detections and metadata
     """
-    # Unpack prediction output
     detections_list, params = prediction_output
 
-    detections = []
-    inference_time_ms = 0
-    image_shape = None
-
     # Extract filtering parameters
-    filter_classes = params.get("classes")  # None means no filtering
+    filter_classes = params.get("classes")
     max_detections = params.get("max_detections")
     min_box_area = params.get("min_box_area")
 
-    # Convert class names to lowercase for case-insensitive matching
-    if filter_classes is not None:
-        filter_classes_lower = [c.lower() for c in filter_classes]
+    # Pre-compute lowercased class list for case-insensitive filtering
+    filter_classes_lower = (
+        [c.lower() for c in filter_classes] if filter_classes else None
+    )
 
-    # detections_list is a list of supervision Detections objects
+    detections = []
+    inference_time_ms = 0
+
+    # Process all detections
     for detection in detections_list:
-        # Extract inference time if available
         inference_time_ms = getattr(detection, "inference_time_ms", 0)
 
-        # supervision Detections has: xyxy, confidence, class_id (all numpy arrays)
-        if (
+        if not (
             hasattr(detection, "xyxy")
             and detection.xyxy is not None
             and len(detection.xyxy) > 0
         ):
-            boxes_np = detection.xyxy  # Already numpy
-            confidences_np = detection.confidence  # Already numpy
-            class_ids_np = detection.class_id  # Already numpy
+            continue
 
-            for box, conf, cls_id in zip(boxes_np, confidences_np, class_ids_np):
-                x1, y1, x2, y2 = box
-                cls_id = int(cls_id)
+        for box, conf, cls_id in zip(
+            detection.xyxy, detection.confidence, detection.class_id
+        ):
+            x1, y1, x2, y2 = box
+            cls_id = int(cls_id)
+            label = COCO_CLASSES.get(cls_id, f"unknown_{cls_id}")
+            box_area = (float(x2) - float(x1)) * (float(y2) - float(y1))
 
-                # Map class id to label using COCO_CLASSES dictionary
-                # Model outputs 1-based COCO class IDs directly
-                label = COCO_CLASSES.get(cls_id, f"unknown_{cls_id}")
+            # Apply filters
+            if _should_filter_detection(
+                label, box_area, filter_classes_lower, min_box_area
+            ):
+                continue
 
-                # Apply class filter if specified
-                if (
-                    filter_classes is not None
-                    and label.lower() not in filter_classes_lower
-                ):
-                    continue
+            detections.append(
+                {
+                    "box": [float(x1), float(y1), float(x2), float(y2)],
+                    "confidence": float(conf),
+                    "class_id": cls_id,
+                    "label": label,
+                    "area": box_area,
+                }
+            )
 
-                # Calculate box area for filtering
-                box_area = (float(x2) - float(x1)) * (float(y2) - float(y1))
-
-                # Apply minimum box area filter if specified
-                if min_box_area is not None and box_area < min_box_area:
-                    continue
-
-                detections.append(
-                    {
-                        "box": [float(x1), float(y1), float(x2), float(y2)],
-                        "confidence": float(conf),
-                        "class_id": cls_id,
-                        "label": label,
-                        "area": box_area,  # Include area in response for debugging
-                    }
-                )
-
-    # Count before max_detections filtering
+    # Sort by confidence and apply max detections limit
     total_before_limit = len(detections)
-
-    # Sort by confidence descending before applying max_detections
-    if detections:
-        detections.sort(key=lambda d: d["confidence"], reverse=True)
-
-    # Apply max detections limit if specified
+    detections.sort(key=lambda d: d["confidence"], reverse=True)
     if max_detections is not None and len(detections) > max_detections:
         detections = detections[:max_detections]
 
@@ -401,12 +402,8 @@ def output_fn(
 
     # Add filter information to metadata
     applied_filters = {}
-
-    # Always include confidence threshold (it's always applied)
-    confidence_used = params.get("confidence_used")
-    if confidence_used is not None:
+    if (confidence_used := params.get("confidence_used")) is not None:
         applied_filters["confidence"] = confidence_used
-
     if filter_classes is not None:
         applied_filters["classes"] = filter_classes
     if max_detections is not None:
@@ -419,16 +416,10 @@ def output_fn(
     if applied_filters:
         response["metadata"]["applied_filters"] = applied_filters
 
-    if image_shape is not None:
-        response["metadata"]["image_shape"] = {
-            "height": int(image_shape[0]),
-            "width": int(image_shape[1]),
-        }
-
     logger.info(
         "Returning %d detections (filters: %s)",
         len(detections),
-        applied_filters if applied_filters else "none",
+        applied_filters or "none",
     )
 
     return json.dumps(response)

@@ -19,12 +19,23 @@ rps_data = {
     "ml.g6.xlarge": [12.2, 26.1, 26.5],
 }
 
+# GPU utilization data (%)
+gpu_data = {
+    "ml.g4dn.xlarge": [79, 91, 95],
+    "ml.g5.xlarge": [28, 75, 73],
+    "ml.g6.xlarge": [37, 81, 82],
+}
+
 # Create subplots
 fig = make_subplots(
-    rows=2,
+    rows=3,
     cols=1,
-    subplot_titles=("<b>Latency vs Users</b>", "<b>RPS vs Users</b>"),
-    vertical_spacing=0.15,
+    subplot_titles=(
+        "<b>Latency vs Users (Less is better)</b>",
+        "<b>RPS vs Users (More is better)</b>",
+        "<b>GPU Utilization vs Users (Less is better)</b>",
+    ),
+    vertical_spacing=0.12,
 )
 
 # Define colors with RGBA for transparency
@@ -72,15 +83,34 @@ for instance in instances:
         col=1,
     )
 
+# Add GPU traces
+for instance in instances:
+    fig.add_trace(
+        go.Scatter(
+            x=users,
+            y=gpu_data[instance],
+            name=instance,
+            mode="lines+markers",
+            line=dict(color=colors[instance], width=2.5),
+            marker=dict(
+                size=9, symbol="circle", color=colors[instance], line=dict(width=0)
+            ),
+            legendgroup=instance,
+            showlegend=False,
+        ),
+        row=3,
+        col=1,
+    )
+
 # Update layout
 fig.update_layout(
-    height=1000,
+    height=1450,
     width=900,
     showlegend=True,
     legend=dict(
         orientation="h",
         yanchor="top",
-        y=1.08,
+        y=1.06,
         xanchor="center",
         x=0.5,
         bgcolor="rgba(255,255,255,0)",
@@ -136,13 +166,27 @@ fig.update_yaxes(
     col=1,
 )
 
+fig.update_yaxes(
+    title_text="<b>GPU Utilization (%)</b>",
+    title_font=dict(size=14),
+    showgrid=True,
+    gridwidth=0.5,
+    gridcolor="#e0e0e0",
+    zeroline=False,
+    showline=True,
+    linewidth=1,
+    linecolor="#333",
+    row=3,
+    col=1,
+)
+
 # Add title annotation
 fig.add_annotation(
-    text="<b>Latency Increases with User Load Across ML Instances</b><br><span style='font-size:12px;color:#777'>ml.g4dn shows steeper performance degradation at scale</span>",
+    text="<b>Latency, RPS, and GPU Utilization with Increased User Load Across ML Instances</b>",
     xref="paper",
     yref="paper",
     x=0.5,
-    y=1.14,
+    y=1.09,
     showarrow=False,
     font=dict(size=17, color="#333"),
     xanchor="center",
@@ -163,7 +207,7 @@ fig.show()
 fig.write_image(
     "sagemaker_performance_comparison.png",
     width=900,
-    height=1000,
+    height=1450,
     scale=2,  # 2x resolution for retina displays
 )
 
