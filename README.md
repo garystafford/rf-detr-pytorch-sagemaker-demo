@@ -57,7 +57,7 @@ Configure the RF-DETR model using these environment variables when deploying to 
 
 1. Proceed to your Amazon SageMaker Studio space
 2. `git clone` this repository to your Studio environment
-3. Run the Jupyter notebook [deploy_rf_detr.ipynb](deploy_rf_detr.ipynb)
+3. Run the Jupyter notebook [deploy_rf_detr_local_mac.ipynb](deploy_rf_detr_local_mac.ipynb)
    - Uses `rf-detr-large.pth` model checkpoint
    - Packages model artifact with inference code
    - Deploys to SageMaker real-time endpoint
