@@ -21,7 +21,8 @@ Learn how to deploy and performance test the state-of-the-art RF-DETR object det
 
 ## Contents
 
-- `deploy_rf_detr.ipynb` - End-to-end deployment notebook
+- `deploy_rf_detr_local_mac.ipynb` - End-to-end deployment notebook (local on Mac)
+- `deploy_rf_detr_sagemaker_studio.ipynb` - End-to-end deployment notebook (SageMaker Studio)
 - `code/` - SageMaker model code directory
   - `inference.py` - Custom SageMaker inference handler for RF-DETR
   - `requirements.txt` - Python dependencies
@@ -94,7 +95,7 @@ python3.12 -m pip install virtualenv --break-system-packages -Uq
 python3.12 -m venv .venv
 source .venv/bin/activate
 
-python3.12 -m pip install -r ./requirements.txt -Uq
+python3.12 -m pip install -r ./requirements-deployment.txt -Uq
 ```
 
 ## License
