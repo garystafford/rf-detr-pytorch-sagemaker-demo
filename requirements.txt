@@ -1,7 +1,14 @@
-inference
-numpy
-opencv-python
+# Minimal requirements for Docker testing
+pytest>=7.0
+pytest-cov>=4.0
+black>=23.0
+isort>=5.12
+flake8>=6.0
+black[jupyter]
+
+# Core dependencies only
+sagemaker==2.255.0
+sagemaker-core==1.0.72
+boto3
 pillow
-rfdetr
-sagemaker>=2
-supervision
+numpy

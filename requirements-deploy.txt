@@ -1,0 +1,7 @@
+# Core packages for SageMaker deployment only
+sagemaker==2.255.0
+sagemaker-core==1.0.72
+boto3
+pillow
+numpy
+rfdetr
